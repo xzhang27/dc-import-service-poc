@@ -80,14 +80,7 @@ public abstract class Configuration {
     }
 
   }
-
-  public static void main(String[] args) {
-    Configuration cfg = Configuration.builder()
-        .mode(Mode.LINT)
-        .inputFilePaths(Arrays.asList(" "))
-        .build();
-    System.out.println(cfg.mode().name().toLowerCase());
-  }
+  
 }
 
 enum Resolution {

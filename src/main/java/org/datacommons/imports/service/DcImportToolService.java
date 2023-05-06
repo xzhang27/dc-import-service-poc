@@ -49,14 +49,13 @@ public class DcImportToolService {
         String requestIdentifier = UUID.randomUUID().toString();
 
         // Write uploaded files to a temporary folder
-        List<String> inputFiles = null;
+        List<String> inputFiles;
         try {
             inputFiles = temporarilySaveUploadedFiles(parts, requestIdentifier);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        // Check configuration compatibility?
         Configuration configuration = Configuration.builder()
             .requestIdentifier(requestIdentifier)
             .mode(Mode.valueOf(mode.toUpperCase()))
@@ -75,33 +74,11 @@ public class DcImportToolService {
         return importToolRunner.runDcImportTool(configuration);
     }
 
-    private void saveFile(InputStream inputStream, String fileName) {
-        try {
-            File outputFile = new File(fileName);
-            if (!outputFile.exists()) {
-                outputFile.createNewFile();
-            }
-            FileOutputStream outputStream =
-                new FileOutputStream(outputFile, false);
-            int read = 0;
-            byte[] bytes = new byte[1024];
-            while ((read = inputStream.read(bytes)) != -1) {
-                outputStream.write(bytes, 0, read);
-            }
-            outputStream.flush();
-            outputStream.close();
-            // System.out.println("Wrote to: " + fileName);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     /**
      * Takes the uploaded file data, saves them locally and returns the list of
      * paths to the saved files.
      */
     private List<String> temporarilySaveUploadedFiles(
-        // Need to clean up the files
         List<FormDataBodyPart> parts, String requestIdentifier) throws IOException {
         makeDirs(Arrays.asList(
             TMP_LOCAL_OUTPUT_PATH + requestIdentifier,
@@ -109,13 +86,32 @@ public class DcImportToolService {
 
         ImmutableList.Builder<String> inputPathsBuilder = new ImmutableList.Builder<>();
         for (FormDataBodyPart part : parts) {
-            InputStream is = part.getEntityAs(InputStream.class);
-            ContentDisposition meta = part.getContentDisposition();
-            String tmpPath = TMP_LOCAL_INPUT_PATH + requestIdentifier + "/" + meta.getFileName();
+            InputStream inputStream = part.getEntityAs(InputStream.class);
+            ContentDisposition metadata = part.getContentDisposition();
+            String tmpPath = TMP_LOCAL_INPUT_PATH + requestIdentifier + "/" + metadata.getFileName();
             inputPathsBuilder.add(tmpPath);
-            saveFile(is, tmpPath);
+            saveFile(inputStream, tmpPath);
         }
         return inputPathsBuilder.build();
+    }
+
+    private void saveFile(InputStream inputStream, String fileName) {
+        try {
+            File outputFile = new File(fileName);
+            if (!outputFile.exists()) {
+                outputFile.createNewFile();
+            }
+            FileOutputStream outputStream = new FileOutputStream(outputFile, false);
+            int read;
+            byte[] bytes = new byte[1024];
+            while ((read = inputStream.read(bytes)) != -1) {
+                outputStream.write(bytes, 0, read);
+            }
+            outputStream.flush();
+            outputStream.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void makeDirs(List<String> paths) throws IOException {
